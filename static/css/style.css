@@ -60,7 +60,7 @@ body {
 
 /* 主容器 */
 .container {
-    max-width: 600px;
+    max-width: 720px;
     margin: 60px auto;
     padding: 0 20px;
 }
@@ -186,4 +186,105 @@ body {
     font-weight: 600;
     color: #333;
     margin-right: 8px;
+}
+
+/* 成功提示 */
+.success-msg {
+    background: #f0fff4;
+    color: #27ae60;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #c3e6cb;
+}
+
+/* 搜索功能 */
+.search-card {
+    margin-top: 30px;
+}
+
+.search-group {
+    display: flex;
+    gap: 10px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-search {
+    width: auto;
+    padding: 10px 24px;
+}
+
+.search-results {
+    margin-top: 20px;
+}
+
+.result-count {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.no-result {
+    color: #999;
+    text-align: center;
+    padding: 20px;
+    font-size: 14px;
+}
+
+/* 搜索结果表格 */
+.result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.result-table th {
+    background: #f8f9fa;
+    color: #555;
+    font-weight: 600;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.result-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #444;
+}
+
+.result-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* 注册页底部链接 */
+.form-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #666;
+}
+
+.form-footer a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.form-footer a:hover {
+    text-decoration: underline;
 }

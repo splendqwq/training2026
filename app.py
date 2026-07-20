@@ -1,100 +1,153 @@
+import sqlite3
 import os
-import secrets
-import time
-from flask import Flask, render_template, request, redirect, session, abort
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, session
 
 app = Flask(__name__)
+app.secret_key = "dev-key-2025"
 
-# 生产环境由环境变量提供；缺失时生成临时密钥，服务重启后旧会话会失效。
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_urlsafe(32))
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-)
-
-# 不在源代码保存明文密码。启动前需要设置这两个环境变量。
-admin_password = os.environ.get("ADMIN_PASSWORD")
-alice_password = os.environ.get("ALICE_PASSWORD")
-if not admin_password or not alice_password:
-    raise RuntimeError("请先设置 ADMIN_PASSWORD 和 ALICE_PASSWORD 环境变量")
-
+# 用户数据库 - 明文密码
 USERS = {
     "admin": {
-        "password_hash": generate_password_hash(admin_password),
+        "password": "admin123",
         "role": "admin",
         "email": "admin@example.com",
         "phone": "13800138000",
-        "balance": 99999,
+        "balance": 99999
     },
     "alice": {
-        "password_hash": generate_password_hash(alice_password),
+        "password": "alice2025",
         "role": "user",
         "email": "alice@example.com",
         "phone": "13900139001",
-        "balance": 100,
-    },
+        "balance": 100
+    }
 }
 
-# 简单的内存登录失败限制：连续失败 5 次，锁定 10 分钟。
-MAX_LOGIN_FAILURES = 5
-LOCKOUT_SECONDS = 600
-login_attempts = {}
+
+def init_db():
+    """初始化 SQLite 数据库，建表并插入默认用户"""
+    os.makedirs("data", exist_ok=True)
+    conn = sqlite3.connect("data/users.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT,
+            phone TEXT
+        )
+    """)
+    # 插入默认用户（INSERT OR IGNORE 防止重复）
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+                   ("admin", "admin123", "admin@example.com", "13800138000"))
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+                   ("alice", "alice2025", "alice@example.com", "13900139001"))
+    conn.commit()
+    conn.close()
 
 
-def public_user_info(username):
-    user = USERS[username]
-    return {
-        "username": username,
-        "role": user["role"],
-        "email": user["email"],
-        "phone": user["phone"],
-        "balance": user["balance"],
-    }
+init_db()
 
 
 @app.route("/")
 def index():
     username = session.get("username")
-    user_info = public_user_info(username) if username in USERS else None
-    return render_template("index.html", username=username, user=user_info)
+    user_info = None
+    if username and username in USERS:
+        user_info = USERS[username]
+        # 将用户名也放进字典，方便模板展示
+        user_info["username"] = username
+
+    # 处理搜索参数
+    keyword = request.args.get("keyword", "")
+    search_results = None
+    if keyword:
+        conn = sqlite3.connect("data/users.db")
+        cursor = conn.cursor()
+        pattern = f"%{keyword}%"
+        cursor.execute(
+            "SELECT id, username, email, phone FROM users "
+            "WHERE username LIKE ? OR email LIKE ?",
+            (pattern, pattern),
+        )
+        search_results = cursor.fetchall()
+        conn.close()
+
+    return render_template("index.html", username=username, user=user_info,
+                           keyword=keyword, search_results=search_results)
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
-
+    msg = request.args.get("msg", "")
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        username = request.form.get("username", "")
         password = request.form.get("password", "")
-        client_ip = request.remote_addr or "unknown"
-        key = f"{client_ip}:{username}"
-        attempt = login_attempts.get(key, {"count": 0, "locked_until": 0})
-
-        if attempt["locked_until"] > time.time():
-            error = "登录尝试次数过多，请稍后再试。"
+        if username in USERS and USERS[username]["password"] == password:
+            session["username"] = username
+            user_info = USERS[username]
+            user_info["username"] = username
+            keyword = request.args.get("keyword", "")
+            return render_template("index.html", username=username, user=user_info,
+                                   keyword=keyword, search_results=None)
         else:
-            user = USERS.get(username)
-            if user and check_password_hash(user["password_hash"], password):
-                login_attempts.pop(key, None)
-                session.clear()
-                session["username"] = username
-                return redirect("/")
-
-            attempt["count"] += 1
-            if attempt["count"] >= MAX_LOGIN_FAILURES:
-                attempt = {"count": 0, "locked_until": time.time() + LOCKOUT_SECONDS}
-            login_attempts[key] = attempt
             error = "用户名或密码错误"
+    return render_template("login.html", error=error, msg=msg)
 
-    return render_template("login.html", error=error)
 
-
-@app.route("/logout", methods=["POST","GET"])
+@app.route("/logout")
 def logout():
-    session.clear()
+    session.pop("username", None)
     return redirect("/")
 
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        email = request.form.get("email", "")
+        phone = request.form.get("phone", "")
+        if not username or not password:
+            error = "用户名和密码不能为空"
+        else:
+            conn = sqlite3.connect("data/users.db")
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+                    (username, password, email, phone),
+                )
+                conn.commit()
+                conn.close()
+                return redirect("/login?msg=注册成功，请登录")
+            except sqlite3.IntegrityError:
+                error = "用户名已存在"
+                conn.close()
+    return render_template("register.html", error=error)
+
+
+@app.route("/search")
+def search():
+    keyword = request.args.get("keyword", "")
+    results = []
+    if keyword:
+        conn = sqlite3.connect("data/users.db")
+        cursor = conn.cursor()
+        pattern = f"%{keyword}%"
+        cursor.execute(
+            "SELECT id, username, email, phone FROM users "
+            "WHERE username LIKE ? OR email LIKE ?",
+            (pattern, pattern),
+        )
+        results = cursor.fetchall()
+        conn.close()
+    return render_template("index.html", username=session.get("username"),
+                           user=None, keyword=keyword, search_results=results)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=True)
