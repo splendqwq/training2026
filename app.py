@@ -97,9 +97,12 @@ def index():
     if keyword:
         conn = sqlite3.connect("data/users.db")
         cursor = conn.cursor()
-        sql = f"SELECT id, username, email, phone FROM users WHERE username LIKE '%{keyword}%' OR email LIKE '%{keyword}%'"
-        print(f"[SQL] {sql}")
-        cursor.execute(sql)
+        pattern = f"%{keyword}%"
+        cursor.execute(
+            "SELECT id, username, email, phone FROM users "
+            "WHERE username LIKE ? OR email LIKE ?",
+            (pattern, pattern),
+        )
         search_results = cursor.fetchall()
         conn.close()
 
@@ -145,10 +148,11 @@ def register():
         else:
             conn = sqlite3.connect("data/users.db")
             cursor = conn.cursor()
-            sql = f"INSERT INTO users (username, password, email, phone) VALUES ('{username}', '{password}', '{email}', '{phone}')"
-            print(f"[SQL] {sql}")
             try:
-                cursor.execute(sql)
+                cursor.execute(
+                    "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+                    (username, password, email, phone),
+                )
                 conn.commit()
                 conn.close()
                 return redirect("/login?msg=注册成功，请登录")
@@ -165,9 +169,12 @@ def search():
     if keyword:
         conn = sqlite3.connect("data/users.db")
         cursor = conn.cursor()
-        sql = f"SELECT id, username, email, phone FROM users WHERE username LIKE '%{keyword}%' OR email LIKE '%{keyword}%'"
-        print(f"[SQL] {sql}")
-        cursor.execute(sql)
+        pattern = f"%{keyword}%"
+        cursor.execute(
+            "SELECT id, username, email, phone FROM users "
+            "WHERE username LIKE ? OR email LIKE ?",
+            (pattern, pattern),
+        )
         results = cursor.fetchall()
         conn.close()
     return render_template("index.html", username=session.get("username"),
