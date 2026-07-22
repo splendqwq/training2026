@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import secrets
+from decimal import Decimal, InvalidOperation
 from flask import Flask, render_template, request, redirect, session, url_for, abort, send_from_directory
 
 app = Flask(__name__)
@@ -9,6 +10,7 @@ app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
 app.config["UPLOAD_FOLDER"] = os.path.join(app.instance_path, "uploads")
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+MAX_RECHARGE_AMOUNT = Decimal("100000.00")
 
 
 def image_type_from_signature(uploaded_file):
@@ -67,14 +69,19 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             email TEXT,
-            phone TEXT
+            phone TEXT,
+            balance REAL DEFAULT 0
         )
     """)
-    # 插入默认用户（INSERT OR IGNORE 防止重复）
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
-                   ("admin", "admin123", "admin@example.com", "13800138000"))
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
-                   ("alice", "alice2025", "alice@example.com", "13900139001"))
+    # 兼容旧表：如果 balance 列不存在则添加
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone, balance) VALUES (?, ?, ?, ?, ?)",
+                   ("admin", "admin123", "admin@example.com", "13800138000", 99999))
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone, balance) VALUES (?, ?, ?, ?, ?)",
+                   ("alice", "alice2025", "alice@example.com", "13900139001", 100))
     conn.commit()
     conn.close()
 
@@ -225,6 +232,65 @@ def file_too_large(error):
             error="文件不能超过 2 MB",
         ), 413
     return "请求体过大", 413
+
+
+@app.route("/profile")
+def profile():
+    return render_current_profile()
+
+
+def render_current_profile(error=None):
+    """只返回当前会话所属用户的资料，绝不信任客户端提交的用户 ID。"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
+    conn = sqlite3.connect("data/users.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, username, email, phone, balance FROM users WHERE username = ?",
+        (username,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        session.clear()
+        return redirect("/login")
+
+    user_data = {
+        "id": row[0],
+        "username": row[1],
+        "email": row[2],
+        "phone": row[3],
+        "balance": row[4],
+    }
+    return render_template("profile.html", user=user_data, error=error)
+
+
+@app.route("/recharge", methods=["POST"])
+def recharge():
+    if "username" not in session:
+        return redirect("/login")
+
+    amount_text = request.form.get("amount", "").strip()
+    try:
+        amount = Decimal(amount_text)
+    except (InvalidOperation, ValueError):
+        return render_current_profile("充值金额格式无效")
+
+    if not amount.is_finite() or amount <= 0 or amount > MAX_RECHARGE_AMOUNT:
+        return render_current_profile("充值金额必须大于 0，且不能超过 100000 元")
+
+    conn = sqlite3.connect("data/users.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET balance = balance + ? WHERE username = ?",
+        (str(amount), session["username"]),
+    )
+    conn.commit()
+    conn.close()
+    return redirect("/profile")
 
 
 if __name__ == "__main__":
