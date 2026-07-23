@@ -11,6 +11,9 @@ app.config["UPLOAD_FOLDER"] = os.path.join(app.instance_path, "uploads")
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 MAX_RECHARGE_AMOUNT = Decimal("100000.00")
+PAGE_FILES = {
+    "help": "help.html",
+}
 
 
 def image_type_from_signature(uploaded_file):
@@ -291,6 +294,33 @@ def recharge():
     conn.commit()
     conn.close()
     return redirect("/profile")
+
+
+@app.route("/page")
+def page():
+    page_name = request.args.get("name", "")
+    page_content = None
+    error = None
+    filename = PAGE_FILES.get(page_name)
+    if not filename:
+        error = "页面不存在"
+    else:
+        # 仅使用服务端固定映射的文件名，用户输入无法参与文件系统路径拼接。
+        file_path = os.path.join(app.root_path, "pages", filename)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                page_content = f.read()
+        except OSError:
+            error = "页面暂不可用"
+
+    username = session.get("username")
+    user_info = None
+    if username and username in USERS:
+        user_info = USERS[username]
+        user_info["username"] = username
+
+    return render_template("index.html", username=username, user=user_info,
+                           page_content=page_content, page_error=error)
 
 
 if __name__ == "__main__":

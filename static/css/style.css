@@ -353,3 +353,106 @@ body {
 .btn-upload:hover {
     background: #5a6fd6;
 }
+
+/* 个人中心页面 */
+.profile-card {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.recharge-section {
+    margin-top: 30px;
+    padding-top: 24px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.recharge-section h3 {
+    margin-bottom: 20px;
+}
+
+.btn-recharge {
+    background: #27ae60;
+}
+
+.btn-recharge:hover {
+    background: #219a52;
+}
+
+/* 首页个人中心快捷按钮 */
+.btn-profile {
+    background: #667eea;
+    margin-top: 10px;
+}
+
+.btn-profile:hover {
+    background: #5a6fd6;
+}
+
+.profile-card a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.profile-card a:hover {
+    text-decoration: underline;
+}
+
+/* 动态页面内容 */
+.page-content-card {
+    max-width: 720px;
+}
+
+.page-content {
+    font-size: 15px;
+    color: #444;
+    line-height: 1.8;
+}
+
+.page-content h1 {
+    font-size: 28px;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.page-content h2 {
+    font-size: 20px;
+    color: #444;
+    margin-top: 30px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.page-content h3 {
+    font-size: 16px;
+    color: #555;
+    margin-top: 20px;
+    margin-bottom: 8px;
+}
+
+.page-content p {
+    margin-bottom: 12px;
+}
+
+.page-content ul {
+    margin: 10px 0 20px 20px;
+}
+
+.page-content li {
+    margin-bottom: 8px;
+}
+
+.page-content strong {
+    color: #333;
+}
+
+/* 帮助中心快捷按钮 */
+.btn-help {
+    background: #f39c12;
+    margin-top: 10px;
+}
+
+.btn-help:hover {
+    background: #e08e0b;
+}

@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-{% if username %}
+{% if page_content %}
+<div class="card page-content-card">
+    <div class="page-content">{{ page_content | safe }}</div>
+    <a href="/" class="btn">返回首页</a>
+</div>
+{% elif page_error %}
+<div class="card">
+    <h2>{{ page_error }}</h2>
+    <p>请检查您访问的链接是否正确。</p>
+    <a href="/" class="btn">返回首页</a>
+</div>
+{% elif username %}
 <div class="card">
     <h2>欢迎回来，{{ username }}！</h2>
     <div class="user-info">
@@ -15,6 +26,7 @@
         </ul>
     </div>
     <a href="/profile" class="btn btn-profile">个人中心</a>
+    <a href="/page?name=help" class="btn btn-help">帮助中心</a>
     <a href="/logout" class="btn btn-logout">退出登录</a>
     <a href="/upload" class="btn btn-upload">上传头像</a>
 </div>
