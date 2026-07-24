@@ -42,6 +42,34 @@ def is_allowed_image(uploaded_file):
     )
     return extension in ALLOWED_IMAGE_EXTENSIONS and extension_matches_type, detected_type
 
+
+def get_csrf_token():
+    """为当前会话生成并复用不可预测的 CSRF 令牌。"""
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+@app.context_processor
+def inject_csrf_token():
+    return {"csrf_token": get_csrf_token}
+
+
+@app.before_request
+def protect_state_changing_requests():
+    if request.method != "POST":
+        return None
+
+    expected_token = session.get("csrf_token")
+    submitted_token = request.form.get("csrf_token", "")
+    if not expected_token or not submitted_token:
+        return "请求令牌缺失或已过期", 400
+    if not secrets.compare_digest(expected_token, submitted_token):
+        return "请求令牌无效", 400
+    return None
+
 # 用户数据库 - 明文密码
 USERS = {
     "admin": {

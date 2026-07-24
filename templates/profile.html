@@ -20,6 +20,7 @@
         <div class="recharge-section">
             <h3>充值</h3>
             <form method="post" action="/recharge" class="recharge-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="amount">充值金额</label>
                     <input type="number" id="amount" name="amount" placeholder="请输入充值金额"
